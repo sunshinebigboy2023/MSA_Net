@@ -1,0 +1,38 @@
+.DS_Store
+
+# IDE and editor files
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+
+# Java build outputs
+**/target/
+**/build/
+
+# Frontend dependencies and caches
+**/node_modules/
+**/.umi/
+**/.umi-production/
+**/dist/
+**/coverage/
+**/.eslintcache
+
+# Python caches
+**/__pycache__/
+**/*.pyc
+
+# OS / temp files
+*.tmp
+*.temp
+*bak
+
+# Local bootstrap artifacts
+apache-maven-3.9.9/
+apache-maven-3.9.9-extracted/
+apache-maven-3.9.9-bin.zip
+
+# Local misc
+package-lock.json
