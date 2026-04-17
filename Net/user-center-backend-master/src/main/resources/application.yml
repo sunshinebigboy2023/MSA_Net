@@ -1,0 +1,30 @@
+# Multimodal sentiment analysis backend config
+spring:
+  application:
+    name: user-center-backend
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/yupi
+    username: root
+    password: root
+  session:
+    timeout: 86400
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+msa:
+  base-url: http://127.0.0.1:8000
+  upload-dir: runtime/uploads
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: false
+  global-config:
+    db-config:
+      logic-delete-field: isDelete
+      logic-delete-value: 1
+      logic-not-delete-value: 0

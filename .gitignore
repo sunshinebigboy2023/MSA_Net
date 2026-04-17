@@ -8,6 +8,41 @@
 # Logs
 *.log
 
+# Runtime data, datasets, model checkpoints and local tools
+**/logs/
+**/log/
+**/temp/
+**/runtime/
+MSA/dataset/
+MSA/models/
+MSA/outputs/
+MSA/tools/
+*.db
+*.sqlite
+*.sqlite3
+*.csv
+*.tsv
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+*.bin
+*.pkl
+*.npy
+*.npz
+*.onnx
+*.dat
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wav
+*.mp3
+*.flac
+*.dll
+*.lib
+*.exe
+
 # Java build outputs
 **/target/
 **/build/
@@ -19,8 +54,10 @@
 **/dist/
 **/coverage/
 **/.eslintcache
+**/runtime/uploads/
 
 # Python caches
+**/.venv/
 **/__pycache__/
 **/*.pyc
 
