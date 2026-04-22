@@ -27,7 +27,7 @@ class AnalysisServiceImplTest {
         User user = new User();
         user.setId(7L);
 
-        AnalysisTaskResponse response = service.submit("happy", "en", null, user);
+        AnalysisTaskResponse response = service.submit("happy", "en", false, null, user);
 
         Assertions.assertEquals("task-1", response.getTaskId());
         Assertions.assertEquals("happy", client.payload.get("text"));
@@ -40,7 +40,7 @@ class AnalysisServiceImplTest {
         User user = new User();
         user.setId(7L);
 
-        Assertions.assertThrows(BusinessException.class, () -> service.submit(" ", "auto", null, user));
+        Assertions.assertThrows(BusinessException.class, () -> service.submit(" ", "auto", false, null, user));
     }
 
     @Test
@@ -53,12 +53,28 @@ class AnalysisServiceImplTest {
         user.setId(9L);
         MockMultipartFile video = new MockMultipartFile("video", "sample.mp4", "video/mp4", new byte[]{1, 2, 3});
 
-        service.submit("", "en", video, user);
+        service.submit("", "en", false, video, user);
 
         String videoFile = String.valueOf(client.payload.get("videoFile"));
         Assertions.assertTrue(videoFile.endsWith(".mp4"));
         Assertions.assertTrue(new File(videoFile).exists());
         Assertions.assertEquals("en", client.payload.get("language"));
+    }
+
+    @Test
+    void submitTextAndVideoForwardsTranscriptEnhancementFlag() {
+        CapturingClient client = new CapturingClient();
+        MsaProperties properties = new MsaProperties();
+        properties.setUploadDir("target/test-uploads-enhance");
+        AnalysisServiceImpl service = new AnalysisServiceImpl(client, properties);
+        User user = new User();
+        user.setId(11L);
+        MockMultipartFile video = new MockMultipartFile("video", "sample.mp4", "video/mp4", new byte[]{1, 2, 3});
+
+        service.submit("caption", "en", true, video, user);
+
+        Assertions.assertEquals("caption", client.payload.get("text"));
+        Assertions.assertEquals(Boolean.TRUE, client.payload.get("enhanceTextWithTranscript"));
     }
 
     @Test
@@ -71,7 +87,7 @@ class AnalysisServiceImplTest {
         user.setId(10L);
         MultipartFile video = new TransferToFailingMultipartFile("sample.mp4", new byte[]{4, 5, 6});
 
-        service.submit("", "zh", video, user);
+        service.submit("", "zh", false, video, user);
 
         String videoFile = String.valueOf(client.payload.get("videoFile"));
         Assertions.assertTrue(new File(videoFile).isAbsolute());

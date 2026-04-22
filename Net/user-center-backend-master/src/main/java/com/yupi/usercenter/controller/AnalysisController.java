@@ -33,10 +33,11 @@ public class AnalysisController {
     public BaseResponse<AnalysisTaskResponse> analyze(
             @RequestParam(value = "text", required = false) String text,
             @RequestParam(value = "language", required = false) String language,
+            @RequestParam(value = "enhanceTextWithTranscript", required = false) Boolean enhanceTextWithTranscript,
             @RequestPart(value = "video", required = false) MultipartFile video,
             HttpServletRequest request) {
         User currentUser = requireLogin(request);
-        return ResultUtils.success(analysisService.submit(text, language, video, currentUser));
+        return ResultUtils.success(analysisService.submit(text, language, enhanceTextWithTranscript, video, currentUser));
     }
 
     @GetMapping("/task/{taskId}")

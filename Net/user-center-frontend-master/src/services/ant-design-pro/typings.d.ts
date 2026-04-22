@@ -42,7 +42,9 @@ declare namespace API {
     message?: string;
     error?: string;
     transcript?: string;
+    textSource?: string;
     featureStatus?: Record<string, string>;
+    warnings?: string[];
     language?: string;
     modelDataset?: string;
     modelCondition?: string;

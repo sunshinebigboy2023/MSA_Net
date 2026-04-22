@@ -12,4 +12,6 @@ public class AnalysisSubmitRequest implements Serializable {
     private String text;
 
     private String language;
+
+    private Boolean enhanceTextWithTranscript;
 }

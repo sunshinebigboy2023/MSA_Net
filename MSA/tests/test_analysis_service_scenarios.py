@@ -1,4 +1,5 @@
 import unittest
+import os
 
 import numpy as np
 
@@ -36,9 +37,11 @@ class _UnavailableMediaService:
 class _FakeTranscriptionService:
     def __init__(self):
         self.calls = []
+        self.languages = []
 
-    def transcribe(self, audio_path):
+    def transcribe(self, audio_path, language=None):
         self.calls.append(audio_path)
+        self.languages.append(language)
         return "asr text"
 
 
@@ -154,6 +157,26 @@ class AnalysisServiceScenarioTests(unittest.TestCase):
         self.assertEqual(service._text_extractor.seen, ["user provided text"])
         self.assertEqual(service._transcription_service.calls, [])
         self.assertEqual(len(service._audio_feature_service.calls), 1)
+
+    def test_video_with_manual_text_can_fuse_asr_transcript(self):
+        service = _build_service(has_audio=True)
+
+        task = service.submit(
+            {
+                "videoFile": "sample.mp4",
+                "text": "user provided text",
+                "language": "en",
+                "enhanceTextWithTranscript": True,
+            }
+        )
+        result = service.run_task(task.task_id)
+
+        self.assertEqual(result["usedModalities"], ["audio", "text", "video"])
+        self.assertEqual(service._text_extractor.seen, ["user provided text\nasr text"])
+        self.assertEqual(service._transcription_service.calls, [os.path.join("temp", task.task_id, "audio.wav")])
+        self.assertEqual(service._transcription_service.languages, ["en"])
+        self.assertEqual(result["textSource"], "manual_transcript")
+        self.assertEqual(result["featureStatus"]["text"], "extracted_with_transcript")
 
     def test_video_with_unavailable_ffmpeg_still_uses_text_and_video(self):
         service = _build_service(has_audio=True)

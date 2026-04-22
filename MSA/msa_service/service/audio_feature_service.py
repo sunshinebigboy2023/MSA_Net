@@ -11,6 +11,7 @@ import soundfile as sf
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchaudio.functional as AF
 
 
 class FeatureExtractionUnavailable(RuntimeError):
@@ -170,8 +171,9 @@ class Wav2VecAudioFeatureService:
         audio, sample_rate = sf.read(audio_path, dtype="float32")
         if audio.ndim > 1:
             audio = audio.mean(axis=1)
+        audio = np.asarray(audio, dtype=np.float32)
         if sample_rate != 16000:
-            raise ValueError(f"wav2vec audio must be 16kHz, got {sample_rate}")
+            audio = AF.resample(torch.from_numpy(audio), sample_rate, 16000).numpy()
 
         tensor = torch.from_numpy(audio[np.newaxis, :]).to(self.device)
         with torch.no_grad():

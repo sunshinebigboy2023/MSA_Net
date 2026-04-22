@@ -11,12 +11,23 @@ import torchaudio.functional as AF
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
 
+_LANGUAGE_PROMPTS = {
+    "zh": "chinese",
+    "cn": "chinese",
+    "chinese": "chinese",
+    "中文": "chinese",
+    "en": "english",
+    "english": "english",
+    "英文": "english",
+}
+
+
 class WhisperTranscriptionService:
     def __init__(
         self,
         model_dir: Optional[str] = None,
         device: str = "cpu",
-        language: str = "zh",
+        language: Optional[str] = None,
         task: str = "transcribe",
         load_model: bool = True,
     ):
@@ -29,7 +40,7 @@ class WhisperTranscriptionService:
         if load_model:
             self._load()
 
-    def transcribe(self, audio_path: str) -> str:
+    def transcribe(self, audio_path: str, language: Optional[str] = None) -> str:
         if self.processor is None or self.model is None:
             self._load()
 
@@ -40,13 +51,25 @@ class WhisperTranscriptionService:
             return_tensors="pt",
         )
         input_features = inputs.input_features.to(self.device)
-        forced_decoder_ids = self.processor.get_decoder_prompt_ids(language=self.language, task=self.task)
+        language_prompt = self._language_prompt(language or self.language)
+        generate_kwargs = {}
+        if language_prompt:
+            generate_kwargs["forced_decoder_ids"] = self.processor.get_decoder_prompt_ids(
+                language=language_prompt,
+                task=self.task,
+            )
 
         with torch.no_grad():
-            predicted_ids = self.model.generate(input_features, forced_decoder_ids=forced_decoder_ids)
+            predicted_ids = self.model.generate(input_features, **generate_kwargs)
 
         text = self.processor.batch_decode(predicted_ids, skip_special_tokens=True)[0].strip()
         return text
+
+    @staticmethod
+    def _language_prompt(language: Optional[str]) -> Optional[str]:
+        if not language:
+            return None
+        return _LANGUAGE_PROMPTS.get(language.strip().lower())
 
     def _load(self):
         self.processor = WhisperProcessor.from_pretrained(str(self.model_dir))

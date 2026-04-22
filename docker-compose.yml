@@ -1,0 +1,113 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: msa-net-mysql
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: msa_root
+      MYSQL_DATABASE: yupi
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./Net/user-center-backend-master/sql/create_table.sql:/docker-entrypoint-initdb.d/01-create-table.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pmsa_root"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: msa-net-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: msa-net-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: msa
+      RABBITMQ_DEFAULT_PASS: msa_password
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./Net/user-center-backend-master
+    container_name: msa-net-backend
+    environment:
+      MYSQL_URL: jdbc:mysql://mysql:3306/yupi?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: msa_root
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: msa
+      SPRING_RABBITMQ_PASSWORD: msa_password
+      MSA_ASYNC_ENABLED: "true"
+      MSA_UPLOAD_DIR: /app/runtime/uploads
+      MSA_CALLBACK_TOKEN: msa-worker-token
+      MSA_SUBMIT_LIMIT: 5000
+      MSA_SUBMIT_WINDOW_SECONDS: 60
+    ports:
+      - "8080:8080"
+    volumes:
+      - upload-data:/app/runtime/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  msa-worker:
+    build:
+      context: ./MSA
+      dockerfile: Dockerfile.worker
+    container_name: msa-net-worker
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: msa
+      RABBITMQ_PASSWORD: msa_password
+      MSA_ANALYSIS_QUEUE: msa.analysis.queue
+      MSA_CALLBACK_BASE_URL: http://backend:8080/api
+      MSA_CALLBACK_TOKEN: msa-worker-token
+      MSA_WORKER_CONCURRENCY: 2
+      MSA_CHECKPOINT: /app/models
+    volumes:
+      - upload-data:/app/runtime/uploads
+      - ./MSA/models:/app/models:ro
+      - ./MSA/tools:/app/tools:ro
+    depends_on:
+      backend:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:
+  upload-data:

@@ -13,6 +13,7 @@ class LanguageModelRoutingTests(unittest.TestCase):
         self.assertEqual(dataset_for_text("我很高兴"), "SIMS")
         self.assertEqual(detect_text_language("I am happy"), "en")
         self.assertEqual(dataset_for_text("I am happy"), "CMUMOSI")
+        self.assertEqual(detect_text_language("I am happy with 这个结果"), "en")
 
     def test_discovers_checkpoints_by_dataset_and_condition(self):
         from msa_service.service.predictor_service import discover_condition_checkpoints

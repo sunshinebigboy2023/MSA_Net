@@ -3,63 +3,146 @@
 .container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
   overflow: auto;
   background:
-    linear-gradient(180deg, rgba(22, 119, 255, 0.08) 0%, rgba(255, 255, 255, 0) 36%),
-    #f5f7fb;
-}
-
-.lang {
-  width: 100%;
-  height: 40px;
-  line-height: 44px;
-  text-align: right;
-  :global(.ant-dropdown-trigger) {
-    margin-right: 24px;
-  }
+    linear-gradient(135deg, rgba(31, 143, 95, 0.13), rgba(22, 119, 255, 0.08)),
+    #f6f8fb;
 }
 
 .content {
+  display: flex;
   flex: 1;
-  padding: 32px 0;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px 24px;
 }
 
-@media (min-width: @screen-md-min) {
-  .container {
-    background:
-      linear-gradient(135deg, rgba(22, 119, 255, 0.1) 0%, rgba(82, 196, 26, 0.06) 42%, rgba(255, 255, 255, 0) 72%),
-      #f5f7fb;
+.loginShell {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.94fr) minmax(360px, 1fr);
+  width: 100%;
+  max-width: 1040px;
+  min-height: 580px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e6edf4;
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(15, 31, 46, 0.12);
+}
+
+.brandPanel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px;
+  color: #f8fafc;
+  background:
+    linear-gradient(145deg, rgba(15, 31, 46, 0.92), rgba(31, 143, 95, 0.82)),
+    #172033;
+
+  h1 {
+    margin: 26px 0 14px;
+    color: #fff;
+    font-size: 44px;
+    line-height: 1.1;
+    letter-spacing: 0;
   }
 
-  .content {
-    padding: 32px 0 24px;
+  :global(.ant-typography) {
+    max-width: 420px;
+    color: rgba(248, 250, 252, 0.82);
+    font-size: 16px;
+    line-height: 1.8;
   }
 }
 
-.icon {
-  margin-left: 8px;
-  color: rgba(0, 0, 0, 0.2);
-  font-size: 24px;
-  vertical-align: middle;
-  cursor: pointer;
-  transition: color 0.3s;
+.featureList {
+  display: grid;
+  gap: 14px;
+  margin-top: 36px;
 
-  &:hover {
-    color: @primary-color;
+  :global(.ant-space) {
+    color: rgba(248, 250, 252, 0.9);
+    font-weight: 500;
   }
+
+  :global(.anticon) {
+    color: #a7f3d0;
+    font-size: 18px;
+  }
+}
+
+.formPanel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 42px 44px;
+  background: #fbfcfe;
+
+  :global(.ant-pro-form-login-container) {
+    width: 100%;
+    padding: 0;
+  }
+
+  :global(.ant-pro-form-login-main) {
+    width: 100%;
+    max-width: 390px;
+  }
+
+  :global(.ant-pro-form-login-title) {
+    color: #0f1f2e;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  :global(.ant-pro-form-login-desc) {
+    color: #64748b;
+  }
+}
+
+.loginActions {
+  margin-bottom: 24px;
+}
+
+.prefixIcon {
+  color: #64748b;
 }
 
 .brandMark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
-  color: #fff;
-  font-weight: 700;
+  width: 60px;
+  height: 60px;
+  color: #0f1f2e;
+  font-weight: 800;
   font-size: 18px;
   letter-spacing: 0;
-  background: #1677ff;
+  background: #f8fafc;
   border-radius: 8px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.16);
+}
+
+@media (max-width: @screen-md) {
+  .content {
+    align-items: stretch;
+    padding: 24px 16px;
+  }
+
+  .loginShell {
+    grid-template-columns: 1fr;
+  }
+
+  .brandPanel {
+    padding: 30px;
+
+    h1 {
+      font-size: 34px;
+    }
+  }
+
+  .formPanel {
+    padding: 30px 20px;
+  }
 }

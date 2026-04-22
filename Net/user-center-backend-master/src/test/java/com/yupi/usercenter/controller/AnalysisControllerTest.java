@@ -40,12 +40,18 @@ class AnalysisControllerTest {
         AnalysisTaskResponse response = new AnalysisTaskResponse();
         response.setTaskId("task-1");
         response.setStatus("PENDING");
-        Mockito.when(analysisService.submit(Mockito.eq("hello"), Mockito.eq("en"), Mockito.isNull(), Mockito.eq(user)))
+        Mockito.when(analysisService.submit(
+                        Mockito.eq("hello"),
+                        Mockito.eq("en"),
+                        Mockito.eq(true),
+                        Mockito.isNull(),
+                        Mockito.eq(user)))
                 .thenReturn(response);
 
         mockMvc.perform(multipart("/analysis/analyze")
                         .param("text", "hello")
                         .param("language", "en")
+                        .param("enhanceTextWithTranscript", "true")
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))

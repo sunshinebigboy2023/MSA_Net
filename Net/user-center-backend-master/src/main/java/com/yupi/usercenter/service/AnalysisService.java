@@ -7,7 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface AnalysisService {
 
-    AnalysisTaskResponse submit(String text, String language, MultipartFile video, User currentUser);
+    AnalysisTaskResponse submit(String text, String language, Boolean enhanceTextWithTranscript, MultipartFile video, User currentUser);
 
     AnalysisTaskResponse getTask(String taskId);
 

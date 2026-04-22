@@ -27,7 +27,9 @@ from msa_service.domain.schemas import PredictionResult
 
 _CONDITION_PATTERN = re.compile(r"test-condition-([atv]+)\.pth$", re.IGNORECASE)
 _MODALITY_TO_CODE = {"audio": "a", "text": "t", "video": "v"}
+_CODE_TO_MODALITY = {value: key for key, value in _MODALITY_TO_CODE.items()}
 _DEFAULT_DATASET = "CMUMOSI"
+_NEUTRAL_SCORE_BAND = 0.05
 
 
 def _used_modalities(audio_feature=None, text_feature=None, video_feature=None):
@@ -43,7 +45,11 @@ def _used_modalities(audio_feature=None, text_feature=None, video_feature=None):
 
 def condition_from_features(audio_feature=None, text_feature=None, video_feature=None) -> str:
     used = _used_modalities(audio_feature, text_feature, video_feature)
-    return "".join(_MODALITY_TO_CODE[name] for name in used)
+    return condition_from_modalities(used)
+
+
+def condition_from_modalities(modalities) -> str:
+    return "".join(_MODALITY_TO_CODE[name] for name in modalities if name in _MODALITY_TO_CODE)
 
 
 def _dataset_from_checkpoint_path(path: Path) -> str:
@@ -87,9 +93,9 @@ def _to_feature_array(feature, expected_dim: int, name: str) -> np.ndarray:
 
 
 def _score_to_polarity(score: float) -> str:
-    if score > 0:
+    if score > _NEUTRAL_SCORE_BAND:
         return "positive"
-    if score < 0:
+    if score < -_NEUTRAL_SCORE_BAND:
         return "negative"
     return "neutral"
 
@@ -284,6 +290,41 @@ class MoMKEPredictorRegistry:
             self._predictors[key] = self._predictor_factory(self.checkpoint_paths[dataset][condition])
         return self._predictors[key]
 
+    def _select_condition(self, dataset: str, requested_condition: str) -> str:
+        if dataset not in self.checkpoint_paths:
+            supported = ", ".join(self.supported_datasets)
+            raise ValueError(f"No checkpoint available for dataset {dataset!r}. Supported datasets: {supported}")
+        if requested_condition in self.checkpoint_paths[dataset]:
+            return requested_condition
+
+        requested_codes = set(requested_condition)
+        candidates = [
+            condition
+            for condition in self.checkpoint_paths[dataset]
+            if set(condition).issubset(requested_codes) and condition
+        ]
+        if not candidates:
+            supported = ", ".join(sorted(self.checkpoint_paths[dataset]))
+            raise ValueError(
+                f"No checkpoint available for dataset {dataset!r} and condition {requested_condition!r}. "
+                f"Supported conditions: {supported}"
+            )
+
+        def rank(condition: str):
+            codes = set(condition)
+            return (
+                len(codes),
+                1 if "t" in codes else 0,
+                1 if "a" in codes else 0,
+                1 if "v" in codes else 0,
+            )
+
+        return max(candidates, key=rank)
+
+    @staticmethod
+    def _feature_enabled(condition: str, code: str, feature):
+        return feature if code in condition else None
+
     def predict_from_features(
         self,
         audio_feature=None,
@@ -295,10 +336,12 @@ class MoMKEPredictorRegistry:
         condition = condition_from_features(audio_feature, text_feature, video_feature)
         if not condition:
             raise ValueError("At least one modality feature is required")
-        predictor = self._predictor_for(dataset or self._default_dataset(), condition)
+        selected_dataset = dataset or self._default_dataset()
+        selected_condition = self._select_condition(selected_dataset, condition)
+        predictor = self._predictor_for(selected_dataset, selected_condition)
         return predictor.predict_from_features(
-            audio_feature=audio_feature,
-            text_feature=text_feature,
-            video_feature=video_feature,
+            audio_feature=self._feature_enabled(selected_condition, "a", audio_feature),
+            text_feature=self._feature_enabled(selected_condition, "t", text_feature),
+            video_feature=self._feature_enabled(selected_condition, "v", video_feature),
             task_id=task_id,
         )

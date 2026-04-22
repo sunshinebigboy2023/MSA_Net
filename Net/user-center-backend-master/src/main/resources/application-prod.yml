@@ -7,5 +7,24 @@ spring:
     password: ${MYSQL_PASSWORD:}
   session:
     timeout: 86400
+  redis:
+    host: ${SPRING_REDIS_HOST:localhost}
+    port: ${SPRING_REDIS_PORT:6379}
+    database: ${SPRING_REDIS_DATABASE:0}
+    timeout: 5000
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
 server:
   address: 0.0.0.0
+msa:
+  async-enabled: ${MSA_ASYNC_ENABLED:true}
+  upload-dir: ${MSA_UPLOAD_DIR:runtime/uploads}
+  callback-token: ${MSA_CALLBACK_TOKEN:msa-worker-token}
+  submit-limit: ${MSA_SUBMIT_LIMIT:20}
+  submit-window-seconds: ${MSA_SUBMIT_WINDOW_SECONDS:60}
+  max-retry-count: ${MSA_MAX_RETRY_COUNT:3}
+  stale-task-seconds: ${MSA_STALE_TASK_SECONDS:300}
+  retry-delay-ms: ${MSA_RETRY_DELAY_MS:30000}

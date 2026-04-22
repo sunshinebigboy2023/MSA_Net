@@ -1,5 +1,6 @@
 package com.yupi.usercenter.model.domain.analysis;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -7,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AnalysisResultResponse implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -33,7 +35,11 @@ public class AnalysisResultResponse implements Serializable {
 
     private String transcript;
 
+    private String textSource;
+
     private Map<String, String> featureStatus;
+
+    private List<String> warnings;
 
     private String language;
 

@@ -6,9 +6,11 @@ import json
 import os
 import threading
 from pathlib import Path
+from typing import TYPE_CHECKING
 from wsgiref.simple_server import make_server
 
-from msa_service.service.analysis_service import AnalysisService
+if TYPE_CHECKING:
+    from msa_service.service.analysis_service import AnalysisService
 
 
 def _default_checkpoint_source():
@@ -32,7 +34,7 @@ def _json_response(start_response, status: str, payload):
     return [body]
 
 
-def build_app(service: AnalysisService, run_async: bool = True):
+def build_app(service: "AnalysisService", run_async: bool = True):
     def app(environ, start_response):
         path = environ.get("PATH_INFO", "")
         method = environ.get("REQUEST_METHOD", "GET").upper()
@@ -85,6 +87,8 @@ def build_app(service: AnalysisService, run_async: bool = True):
 
 
 def main():
+    from msa_service.service.analysis_service import AnalysisService
+
     parser = argparse.ArgumentParser(description="Standalone MoMKE local HTTP server")
     parser.add_argument("--host", type=str, default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)

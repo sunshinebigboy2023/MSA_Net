@@ -1,10 +1,13 @@
-torch
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.6.0+cpu
 transformers
 soundfile
-torchaudio
+torchaudio==2.6.0+cpu
 safetensors
 pandas
 Pillow
+pika
+requests
 # Optional later:
 # fairseq
 # opencv-python

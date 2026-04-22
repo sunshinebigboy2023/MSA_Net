@@ -1,4 +1,4 @@
-FROM maven:3.5-jdk-8-alpine as builder
+FROM maven:3.9.9-eclipse-temurin-8 AS builder
 
 WORKDIR /app
 COPY pom.xml .

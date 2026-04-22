@@ -4,13 +4,50 @@
   width: 100%;
 }
 
-.panel {
-  min-height: 640px;
+.heroBand {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+  padding: 28px;
+  color: #172033;
+  background:
+    linear-gradient(135deg, rgba(31, 143, 95, 0.13), rgba(22, 119, 255, 0.09)),
+    #f7fafc;
+  border: 1px solid #e6edf4;
   border-radius: 8px;
+
+  h2 {
+    margin-bottom: 8px;
+    color: #0f1f2e;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  :global(.ant-typography) {
+    max-width: 720px;
+    margin-bottom: 0;
+    color: #4b5563;
+  }
+}
+
+.panel {
+  min-height: 680px;
+  border: 1px solid #e8eef5;
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(15, 31, 46, 0.06);
 }
 
 .fullWidth {
   width: 100%;
+}
+
+.fieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .textArea {
@@ -20,6 +57,18 @@
 
 .uploader {
   margin-top: 10px;
+
+  :global(.ant-upload.ant-upload-drag) {
+    background: #fbfcfe;
+    border-color: #d8e2ec;
+    border-radius: 8px;
+  }
+}
+
+.optionGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr);
+  gap: 16px;
 }
 
 .languageGroup {
@@ -27,4 +76,68 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
+}
+
+.switchPanel {
+  min-height: 92px;
+  padding: 14px;
+  background: #f7fafc;
+  border: 1px solid #e6edf4;
+  border-radius: 8px;
+
+  :global(.ant-typography) {
+    margin: 8px 0 0;
+  }
+}
+
+.helpIcon {
+  color: #6b7280;
+}
+
+.metric {
+  min-height: 112px;
+  padding: 16px;
+  background: #fbfcfe;
+  border: 1px solid #e6edf4;
+  border-radius: 8px;
+
+  :global(.ant-statistic-title) {
+    color: #6b7280;
+  }
+}
+
+.details {
+  :global(.ant-descriptions-item-label) {
+    width: 116px;
+    color: #334155;
+    font-weight: 600;
+    background: #f7fafc;
+  }
+}
+
+.transcript {
+  max-height: 128px;
+  margin-bottom: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.emptyIcon {
+  color: #94a3b8;
+  font-size: 72px;
+}
+
+@media (max-width: @screen-md) {
+  .heroBand {
+    flex-direction: column;
+    padding: 20px;
+  }
+
+  .optionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    min-height: auto;
+  }
 }

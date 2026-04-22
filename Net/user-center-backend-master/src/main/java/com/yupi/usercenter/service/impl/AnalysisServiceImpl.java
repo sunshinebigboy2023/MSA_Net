@@ -5,10 +5,13 @@ import com.yupi.usercenter.config.MsaProperties;
 import com.yupi.usercenter.exception.BusinessException;
 import com.yupi.usercenter.model.domain.User;
 import com.yupi.usercenter.model.domain.analysis.AnalysisResultResponse;
+import com.yupi.usercenter.model.domain.analysis.AnalysisTask;
+import com.yupi.usercenter.model.domain.analysis.AnalysisTaskMessage;
 import com.yupi.usercenter.model.domain.analysis.AnalysisTaskResponse;
 import com.yupi.usercenter.service.AnalysisService;
 import com.yupi.usercenter.service.MsaClient;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,12 +34,40 @@ public class AnalysisServiceImpl implements AnalysisService {
     private final MsaProperties properties;
 
     public AnalysisServiceImpl(MsaClient msaClient, MsaProperties properties) {
-        this.msaClient = msaClient;
-        this.properties = properties;
+        this(msaClient, properties, null, null, null, null);
     }
 
+    @Autowired
+    public AnalysisServiceImpl(
+            MsaClient msaClient,
+            MsaProperties properties,
+            AnalysisTaskService taskService,
+            AnalysisQueueProducer queueProducer,
+            AnalysisRateLimitService rateLimitService,
+            AnalysisCacheService cacheService) {
+        this.msaClient = msaClient;
+        this.properties = properties;
+        this.taskService = taskService;
+        this.queueProducer = queueProducer;
+        this.rateLimitService = rateLimitService;
+        this.cacheService = cacheService;
+    }
+
+    private final AnalysisTaskService taskService;
+
+    private final AnalysisQueueProducer queueProducer;
+
+    private final AnalysisRateLimitService rateLimitService;
+
+    private final AnalysisCacheService cacheService;
+
     @Override
-    public AnalysisTaskResponse submit(String text, String language, MultipartFile video, User currentUser) {
+    public AnalysisTaskResponse submit(
+            String text,
+            String language,
+            Boolean enhanceTextWithTranscript,
+            MultipartFile video,
+            User currentUser) {
         boolean hasText = StringUtils.isNotBlank(text);
         boolean hasVideo = video != null && !video.isEmpty();
         if (!hasText && !hasVideo) {
@@ -55,6 +86,20 @@ public class AnalysisServiceImpl implements AnalysisService {
 
         if (hasVideo) {
             payload.put("videoFile", saveVideo(video, currentUser).toAbsolutePath().toString());
+            if (Boolean.TRUE.equals(enhanceTextWithTranscript) && hasText) {
+                payload.put("enhanceTextWithTranscript", true);
+            }
+        }
+
+        if (useAsyncQueue()) {
+            long userId = currentUser == null || currentUser.getId() == null ? 0L : currentUser.getId();
+            if (!rateLimitService.allowSubmit(userId)) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "Analysis submit rate limit exceeded");
+            }
+            AnalysisTask task = taskService.createQueuedTask(userId, payload);
+            cacheService.cacheTask(task);
+            queueProducer.publish(new AnalysisTaskMessage(task.getTaskId(), userId, payload, task.getRetryCount()));
+            return AnalysisCacheService.toTaskResponse(task);
         }
 
         return msaClient.submitAnalysis(payload);
@@ -62,12 +107,26 @@ public class AnalysisServiceImpl implements AnalysisService {
 
     @Override
     public AnalysisTaskResponse getTask(String taskId) {
+        if (useAsyncQueue()) {
+            return taskService.getTaskResponse(taskId);
+        }
         return msaClient.getTask(taskId);
     }
 
     @Override
     public AnalysisResultResponse getResult(String taskId) {
+        if (useAsyncQueue()) {
+            return taskService.getResultResponse(taskId);
+        }
         return msaClient.getResult(taskId);
+    }
+
+    private boolean useAsyncQueue() {
+        return Boolean.TRUE.equals(properties.getAsyncEnabled())
+                && taskService != null
+                && queueProducer != null
+                && rateLimitService != null
+                && cacheService != null;
     }
 
     private String normalizeLanguage(String language) {

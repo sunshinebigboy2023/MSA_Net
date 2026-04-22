@@ -2,6 +2,16 @@
 spring:
   application:
     name: user-center-backend
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    timeout: 5000
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
   servlet:
     multipart:
       max-file-size: 500MB
@@ -20,6 +30,18 @@ server:
 msa:
   base-url: http://127.0.0.1:8000
   upload-dir: runtime/uploads
+  async-enabled: true
+  submit-limit: 20
+  submit-window-seconds: 60
+  max-retry-count: 3
+  stale-task-seconds: 300
+  retry-delay-ms: 30000
+  callback-token: msa-worker-token
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: false

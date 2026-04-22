@@ -12,8 +12,8 @@ from msa_service.dao.task_dao import InMemoryTaskDao
 from msa_service.service.audio_feature_service import FeatureExtractionUnavailable, Wav2VecAudioFeatureService
 from msa_service.service.feature_service import TextFeatureExtractor
 from msa_service.service.media_service import MediaService
-from msa_service.service.predictor_service import MoMKEPredictorRegistry, condition_from_features
-from msa_service.service.language_service import dataset_for_language, detect_text_language
+from msa_service.service.predictor_service import MoMKEPredictorRegistry, condition_from_features, condition_from_modalities
+from msa_service.service.language_service import dataset_for_language, detect_text_language, normalize_language_request
 from msa_service.service.transcription_service import WhisperTranscriptionService
 from msa_service.service.video_feature_service import ManetVideoFeatureService
 
@@ -78,12 +78,21 @@ class AnalysisService:
                 task_id=task_id,
                 dataset=metadata.get("modelDataset"),
             ).to_dict()
-            result.update(metadata)
-            result["modelCondition"] = condition_from_features(
+            requested_condition = condition_from_features(
                 audio_feature=features.get("audio"),
                 text_feature=features.get("text"),
                 video_feature=features.get("video"),
             )
+            selected_condition = condition_from_modalities(result.get("usedModalities") or [])
+            result.update(metadata)
+            result["modelCondition"] = selected_condition
+            if requested_condition != selected_condition:
+                result["requestedModelCondition"] = requested_condition
+                result["warnings"].append(
+                    f"当前数据集缺少 {requested_condition} 条件 checkpoint，已回退到 {selected_condition} 条件推理。"
+                )
+            if float(result.get("confidence") or 0.0) < 0.58:
+                result["warnings"].append("模型置信度偏低，建议补充更完整的文本、清晰语音或正脸视频后复测。")
             result["rawInputs"] = self._raw_inputs(task.payload)
             result["processingTimeMs"] = int((time.perf_counter() - started_at) * 1000)
             self.task_dao.set_result(task_id, result)
@@ -99,26 +108,40 @@ class AnalysisService:
             "language": "unknown",
             "modelDataset": "CMUMOSI",
             "featureStatus": {"audio": "missing", "text": "missing", "video": "missing"},
+            "textSource": None,
+            "warnings": [],
         }
         audio_file = self._resolve_audio_source(task_id, payload)
+        requested_language = self._resolve_requested_language(payload)
         language_text: Optional[str] = None
 
-        text = payload.get("text")
+        text = self._normalize_text(payload.get("text"))
         if text:
+            transcript = None
             language_text = text
+            if audio_file and self._should_enhance_with_transcript(payload):
+                try:
+                    transcript = self._transcribe_audio(task_id, audio_file, requested_language)
+                    metadata["transcript"] = transcript
+                    language_text = self._combine_text_sources(text, transcript)
+                except Exception as exc:
+                    metadata["warnings"].append(f"语音转写增强失败，已仅使用手动文本：{exc}")
             self.task_dao.set_status(task_id, TASK_EXTRACTING)
-            features["text"] = self.text_extractor.extract(text)
-            metadata["featureStatus"]["text"] = "extracted"
+            features["text"] = self.text_extractor.extract(language_text)
+            metadata["featureStatus"]["text"] = "extracted_with_transcript" if transcript else "extracted"
+            metadata["textSource"] = "manual_transcript" if transcript else "manual"
         elif payload.get("textFeaturePath"):
             features["text"] = np.load(payload["textFeaturePath"]).astype(np.float32).reshape(-1)
             metadata["featureStatus"]["text"] = "provided"
+            metadata["textSource"] = "provided_feature"
         elif audio_file:
-            transcript = self._transcribe_audio(task_id, audio_file)
+            transcript = self._transcribe_audio(task_id, audio_file, requested_language)
             metadata["transcript"] = transcript
             language_text = transcript
             self.task_dao.set_status(task_id, TASK_EXTRACTING)
             features["text"] = self.text_extractor.extract(transcript)
             metadata["featureStatus"]["text"] = "extracted_from_transcript"
+            metadata["textSource"] = "transcript"
 
         if payload.get("audioFeaturePath"):
             features["audio"] = np.load(payload["audioFeaturePath"]).astype(np.float32).reshape(-1)
@@ -137,20 +160,47 @@ class AnalysisService:
         if not any(value is not None for value in features.values()):
             raise ValueError("At least one modality input is required")
 
-        language = self._resolve_language(payload, language_text)
+        language = requested_language or self._resolve_language(payload, language_text)
         metadata["language"] = language
         metadata["modelDataset"] = dataset_for_language(language)
 
         return features, metadata
 
     @staticmethod
+    def _resolve_requested_language(payload: Dict[str, Any]) -> Optional[str]:
+        return normalize_language_request(str(payload.get("language") or ""))
+
+    @staticmethod
     def _resolve_language(payload: Dict[str, Any], text: Optional[str]) -> str:
-        requested = str(payload.get("language") or "").strip().lower()
-        if requested in {"zh", "cn", "chinese", "中文", "sims"}:
-            return "zh"
-        if requested in {"en", "english", "英文", "cmumosi", "mosi"}:
-            return "en"
+        requested = AnalysisService._resolve_requested_language(payload)
+        if requested:
+            return requested
         return detect_text_language(text)
+
+    @staticmethod
+    def _normalize_text(value: Any) -> str:
+        return " ".join(str(value or "").split())
+
+    @staticmethod
+    def _combine_text_sources(manual_text: str, transcript: str) -> str:
+        manual = AnalysisService._normalize_text(manual_text)
+        spoken = AnalysisService._normalize_text(transcript)
+        if not spoken:
+            return manual
+        if not manual:
+            return spoken
+        if spoken == manual or spoken in manual:
+            return manual
+        if manual in spoken:
+            return spoken
+        return f"{manual}\n{spoken}"
+
+    @staticmethod
+    def _should_enhance_with_transcript(payload: Dict[str, Any]) -> bool:
+        value = payload.get("enhanceTextWithTranscript")
+        if isinstance(value, bool):
+            return value
+        return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
     def _resolve_audio_source(self, task_id: str, payload: Dict[str, Any]) -> Optional[str]:
         audio_file = payload.get("audioFile")
@@ -173,9 +223,15 @@ class AnalysisService:
                 return None
         return None
 
-    def _transcribe_audio(self, task_id: str, audio_file: str) -> str:
+    def _transcribe_audio(self, task_id: str, audio_file: str, language_hint: Optional[str] = None) -> str:
         self.task_dao.set_status(task_id, TASK_EXTRACTING)
-        transcript = self.transcription_service.transcribe(audio_file)
+        try:
+            transcript = self.transcription_service.transcribe(audio_file, language=language_hint)
+        except TypeError as exc:
+            if "language" not in str(exc):
+                raise
+            transcript = self.transcription_service.transcribe(audio_file)
+        transcript = self._normalize_text(transcript)
         if not transcript:
             raise ValueError("Whisper transcription returned empty text")
         return transcript
