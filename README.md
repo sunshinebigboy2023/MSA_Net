@@ -209,11 +209,3 @@ Docker Compose 配置检查：
 ```powershell
 docker compose config --quiet
 ```
-
-## 后续优化方向
-
-- 部署到云服务器，使用 Nginx 和 HTTPS 对外提供服务。
-- 拆分 MySQL / Redis 为云托管服务，提升数据可靠性。
-- 增加多个 MSA worker 副本，提升后台推理吞吐。
-- 增加 Prometheus / Grafana 监控队列长度、任务耗时、失败率和资源占用。
-- 将压测报告整理为线上 benchmark 文档，记录不同并发下的 QPS、P95、P99 和错误率。
