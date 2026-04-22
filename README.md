@@ -1,6 +1,6 @@
 # MSA-Net 高并发多模态情感分析平台
 
-MSA-Net 是一个面向文本、音频、视频的多模态情感分析系统。本仓库在原有 MSA 推理能力基础上，补齐了 Spring Boot 后端、前端页面、异步任务队列、Redis 限流、MySQL 任务状态持久化、Python 推理 Worker 和 Docker Compose 一键部署，目标是把算法项目包装成一个可演示、可压测、可上线的工程项目。
+MSA-Net 是一个面向文本、音频、视频的多模态情感分析系统。本仓库在原有 MSA 推理能力基础上，补齐了 Spring Boot 后端、前端页面、异步任务队列、Redis 限流、MySQL 任务状态持久化、Python 推理 Worker 和 Docker Compose 一键部署，提供可演示、可压测、可部署的工程化服务。
 
 ## 项目亮点
 
@@ -33,7 +33,7 @@ MSA-Net
 ├── Net/
 │   ├── user-center-backend-master/       Spring Boot 后端
 │   └── user-center-frontend-master/      React 前端
-├── docs/                                 架构、演示和简历包装文档
+├── docs/                                 架构、演示和部署文档
 ├── scripts/                              压测脚本和 mock server
 ├── docker-compose.yml                    高并发运行环境
 └── .env.high-concurrency.example         高并发环境变量示例
@@ -209,10 +209,6 @@ Docker Compose 配置检查：
 ```powershell
 docker compose config --quiet
 ```
-
-## 简历描述参考
-
-> 基于 MSA-Net 构建高并发多模态情感分析平台，引入 RabbitMQ 异步任务队列、Redis Lua 限流、MySQL 任务状态持久化和 Python 多线程推理 worker，将长耗时模型推理从同步请求链路中解耦；通过 Docker Compose 完成 Spring Boot、Redis、RabbitMQ、MySQL、MSA worker 的一体化部署。本地压测 1000 请求 / 100 并发下提交成功率 100%，QPS 227.58，P95 476ms，DLQ 为 0。
 
 ## 后续优化方向
 
