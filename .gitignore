@@ -71,6 +71,5 @@ apache-maven-3.9.9/
 apache-maven-3.9.9-extracted/
 apache-maven-3.9.9-bin.zip
 
-# Local misc
-package-lock.json
-yu-like-main/
+# Local deployment bundles
+deliverables/

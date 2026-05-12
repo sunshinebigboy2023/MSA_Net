@@ -9,8 +9,6 @@ services:
       MYSQL_ROOT_PASSWORD: msa_root
       MYSQL_DATABASE: yupi
       TZ: Asia/Shanghai
-    ports:
-      - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./Net/user-center-backend-master/sql/create_table.sql:/docker-entrypoint-initdb.d/01-create-table.sql:ro
@@ -23,8 +21,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: msa-net-redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -40,8 +36,7 @@ services:
       RABBITMQ_DEFAULT_USER: msa
       RABBITMQ_DEFAULT_PASS: msa_password
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "15673:15672"
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
@@ -69,8 +64,6 @@ services:
       MSA_CALLBACK_TOKEN: msa-worker-token
       MSA_SUBMIT_LIMIT: 5000
       MSA_SUBMIT_WINDOW_SECONDS: 60
-    ports:
-      - "8080:8080"
     volumes:
       - upload-data:/app/runtime/uploads
     depends_on:
@@ -105,6 +98,16 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_healthy
+
+  frontend:
+    build:
+      context: ./Net/user-center-frontend-master
+    container_name: msa-net-frontend
+    ports:
+      - "5020:80"
+    depends_on:
+      backend:
+        condition: service_started
 
 volumes:
   mysql-data:

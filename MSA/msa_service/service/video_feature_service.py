@@ -26,12 +26,12 @@ class ManetVideoFeatureService:
         self.openface_service = openface_service or OpenFaceService()
         self._model = None
 
-    def extract(self, video_path: str) -> np.ndarray:
+    def extract(self, video_path: str, output_dir: str | Path | None = None) -> np.ndarray:
         if not Path(video_path).exists():
             raise FileNotFoundError(f"Video file not found: {video_path}")
 
-        output_dir = Path("temp") / "openface" / Path(video_path).stem
-        aligned_dir = self.openface_service.extract_aligned_faces(video_path, str(output_dir))
+        resolved_output_dir = Path(output_dir) if output_dir else Path("temp") / "openface" / Path(video_path).stem
+        aligned_dir = self.openface_service.extract_aligned_faces(video_path, str(resolved_output_dir))
         return self.extract_from_aligned_dir(aligned_dir)
 
     def extract_from_aligned_dir(self, aligned_dir: str | Path) -> np.ndarray:

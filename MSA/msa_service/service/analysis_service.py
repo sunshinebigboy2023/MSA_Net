@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -100,6 +101,8 @@ class AnalysisService:
         except Exception as exc:
             self.task_dao.set_status(task_id, TASK_FAILED, error=str(exc))
             raise
+        finally:
+            self._cleanup_task_temp_dir(task_id)
 
     def _resolve_features(self, task_id: str, payload: Dict[str, Any]) -> Tuple[Dict[str, Optional[np.ndarray]], Dict[str, Any]]:
         features: Dict[str, Optional[np.ndarray]] = {"audio": None, "text": None, "video": None}
@@ -154,7 +157,7 @@ class AnalysisService:
             features["video"] = np.load(payload["videoFeaturePath"]).astype(np.float32).reshape(-1)
             metadata["featureStatus"]["video"] = "provided"
         elif payload.get("videoFile"):
-            features["video"] = self._safe_extract_video_feature(payload["videoFile"])
+            features["video"] = self._safe_extract_video_feature(task_id, payload["videoFile"])
             metadata["featureStatus"]["video"] = "extracted" if features["video"] is not None else "unavailable"
 
         if not any(value is not None for value in features.values()):
@@ -214,7 +217,7 @@ class AnalysisService:
                 media_service = self.media_service
                 if hasattr(media_service, "has_audio_stream") and not media_service.has_audio_stream(video_file):
                     return None
-                audio_file = str(Path("temp") / task_id / "audio.wav")
+                audio_file = str(self._task_temp_dir(task_id) / "audio.wav")
                 media_service.extract_audio(video_file, audio_file)
                 if hasattr(media_service, "has_audible_signal") and not media_service.has_audible_signal(audio_file):
                     return None
@@ -242,9 +245,12 @@ class AnalysisService:
         except FeatureExtractionUnavailable:
             return None
 
-    def _safe_extract_video_feature(self, video_file: str) -> Optional[np.ndarray]:
+    def _safe_extract_video_feature(self, task_id: str, video_file: str) -> Optional[np.ndarray]:
         try:
-            return self.video_feature_service.extract(video_file)
+            return self.video_feature_service.extract(
+                video_file,
+                output_dir=self._task_temp_dir(task_id) / "openface" / Path(video_file).stem,
+            )
         except FeatureExtractionUnavailable:
             return None
 
@@ -261,6 +267,15 @@ class AnalysisService:
     def _raw_inputs(payload: Dict[str, Any]) -> Dict[str, Any]:
         keys = ("text", "audioFile", "videoFile", "audioFeaturePath", "textFeaturePath", "videoFeaturePath")
         return {key: payload.get(key) for key in keys if payload.get(key)}
+
+    @staticmethod
+    def _task_temp_dir(task_id: str) -> Path:
+        return Path("temp") / task_id
+
+    def _cleanup_task_temp_dir(self, task_id: str) -> None:
+        temp_dir = self._task_temp_dir(task_id)
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 def dump_result_json(result: Dict[str, Any], output_path: str):

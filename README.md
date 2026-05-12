@@ -209,3 +209,69 @@ Docker Compose 配置检查：
 ```powershell
 docker compose config --quiet
 ```
+
+## ECS Deployment (Single Host, Public IP)
+
+This repository can be deployed on one Alibaba Cloud ECS instance with Docker Compose.
+
+Recommended public entrypoint:
+
+```text
+MSA-Net: http://<ECS-IP>:5020
+```
+
+This port plan avoids conflict with the existing `reminder` service on port `5019`.
+
+### Public ports
+
+Open these ECS security-group ports:
+
+```text
+5020/tcp    MSA-Net web entrypoint
+15673/tcp   Optional RabbitMQ management UI
+```
+
+Do not expose these services to the public Internet:
+
+```text
+3306  MySQL
+6379  Redis
+5672  RabbitMQ AMQP
+8080  Spring Boot backend
+```
+
+### Before starting
+
+Place required local runtime assets back into these directories on the ECS host:
+
+```text
+MSA/models/
+MSA/tools/
+```
+
+The worker container mounts them read-only at runtime.
+
+### Start on ECS
+
+```powershell
+docker compose up -d --build
+```
+
+After startup:
+
+```text
+Frontend + API gateway: http://<ECS-IP>:5020
+RabbitMQ UI (optional): http://<ECS-IP>:15673
+```
+
+### Runtime cleanup
+
+This project now cleans inference artifacts automatically:
+
+- Worker temp files under task-level `temp/<taskId>/...` are deleted after each task, both on success and failure.
+- Uploaded original videos are deleted after the backend task reaches a terminal state:
+  - `SUCCESS`
+  - `FAILED`
+  - `DEAD_LETTER`
+
+Uploads are not deleted while a task is still retryable, so async retries remain safe.

@@ -13,6 +13,9 @@ import com.yupi.usercenter.model.domain.request.AnalysisCallbackRequest;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -98,6 +101,7 @@ public class AnalysisTaskService {
         if (AnalysisTask.STATUS_SUCCESS.equals(task.getStatus())) {
             cacheService.cacheResult(task.getTaskId(), mapToResult(task.getTaskId(), task.getStatus(), request.getResult(), request.getProcessingTimeMs()));
         }
+        cleanupUploadedVideoIfTerminal(task);
         return task;
     }
 
@@ -166,5 +170,30 @@ public class AnalysisTaskService {
         response.setStatus(status);
         response.setProcessingTimeMs(processingTimeMs);
         return response;
+    }
+
+    private void cleanupUploadedVideoIfTerminal(AnalysisTask task) {
+        if (!isTerminalStatus(task.getStatus())) {
+            return;
+        }
+        Object videoFile = payloadAsMap(task).get("videoFile");
+        if (!(videoFile instanceof String)) {
+            return;
+        }
+        String pathValue = ((String) videoFile).trim();
+        if (pathValue.isEmpty()) {
+            return;
+        }
+        Path path = Paths.get(pathValue);
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
+        }
+    }
+
+    private boolean isTerminalStatus(String status) {
+        return AnalysisTask.STATUS_SUCCESS.equals(status)
+                || AnalysisTask.STATUS_FAILED.equals(status)
+                || AnalysisTask.STATUS_DEAD_LETTER.equals(status);
     }
 }

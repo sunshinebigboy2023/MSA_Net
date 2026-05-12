@@ -1,5 +1,7 @@
-import unittest
 import os
+import tempfile
+import unittest
+from pathlib import Path
 
 import numpy as np
 
@@ -57,9 +59,12 @@ class _FakeAudioFeatureService:
 class _FakeVideoFeatureService:
     def __init__(self):
         self.calls = []
+        self.fail = False
 
-    def extract(self, video_path):
+    def extract(self, video_path, output_dir=None):
         self.calls.append(video_path)
+        if self.fail:
+            raise RuntimeError("video feature extraction failed")
         return np.full((1024,), 3.0, dtype=np.float32)
 
 
@@ -190,3 +195,41 @@ class AnalysisServiceScenarioTests(unittest.TestCase):
         self.assertEqual(service._transcription_service.calls, [])
         self.assertEqual(service._audio_feature_service.calls, [])
         self.assertEqual(service._video_feature_service.calls, ["sample.mp4"])
+
+    def test_run_task_cleans_task_temp_directory_after_success(self):
+        service = _build_service(has_audio=True)
+
+        with tempfile.TemporaryDirectory() as temp_root:
+            original_cwd = os.getcwd()
+            os.chdir(temp_root)
+            try:
+                task = service.submit({"videoFile": "sample.mp4"})
+                task_temp_dir = Path("temp") / task.task_id
+                task_temp_dir.mkdir(parents=True, exist_ok=True)
+                (task_temp_dir / "audio.wav").write_bytes(b"audio")
+
+                service.run_task(task.task_id)
+
+                self.assertFalse(task_temp_dir.exists())
+            finally:
+                os.chdir(original_cwd)
+
+    def test_run_task_cleans_task_temp_directory_after_failure(self):
+        service = _build_service(has_audio=True)
+        service._video_feature_service.fail = True
+
+        with tempfile.TemporaryDirectory() as temp_root:
+            original_cwd = os.getcwd()
+            os.chdir(temp_root)
+            try:
+                task = service.submit({"videoFile": "sample.mp4"})
+                task_temp_dir = Path("temp") / task.task_id
+                task_temp_dir.mkdir(parents=True, exist_ok=True)
+                (task_temp_dir / "audio.wav").write_bytes(b"audio")
+
+                with self.assertRaises(RuntimeError):
+                    service.run_task(task.task_id)
+
+                self.assertFalse(task_temp_dir.exists())
+            finally:
+                os.chdir(original_cwd)
